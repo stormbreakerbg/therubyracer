@@ -6,6 +6,7 @@ $CPPFLAGS += " -Wall" unless $CPPFLAGS.split.include? "-Wall"
 $CPPFLAGS += " -g" unless $CPPFLAGS.split.include? "-g"
 $CPPFLAGS += " -rdynamic" unless $CPPFLAGS.split.include? "-rdynamic"
 $CPPFLAGS += " -fPIC" unless $CPPFLAGS.split.include? "-rdynamic" or RUBY_PLATFORM =~ /darwin/
+$CPPFLAGS += " -fno-rtti"
 
 CONFIG['LDSHARED'] = '$(CXX) -shared' unless RUBY_PLATFORM =~ /darwin/
 if CONFIG['warnflags']

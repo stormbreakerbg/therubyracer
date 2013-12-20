@@ -1,6 +1,28 @@
 #include "rr.h"
-#include "pthread.h"
-#include "unistd.h"
+
+//forward declaration of v8::internal::Thread
+namespace v8 {
+  namespace internal {
+    class Thread {
+    public:
+      class Options {
+      public:
+        Options();
+        Options(const char* name, int stack_size = 0);
+        const char* name() const;
+        int stack_size() const;
+      };
+
+      // Create new thread.
+      explicit Thread(const Options& options);
+      virtual ~Thread();
+      void Start();
+      void Join();
+      const char* name() const;
+      virtual void Run() = 0;
+    };
+  }
+}
 
 namespace rr {
 
@@ -72,35 +94,23 @@ VALUE Script::Run(VALUE self) {
   return Value(Script(self)->Run());
 }
 
-typedef struct {
-    v8::Isolate *isolate;
-    long timeout;
-} timeout_data;
-
-void* breaker(void *d) {
-  timeout_data* data = (timeout_data*)d;
-  usleep(data->timeout*1000);
-  pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-  v8::V8::TerminateExecution(data->isolate);
-  return NULL;
-}
+class TerminatorThread : public v8::internal::Thread {
+  public:
+    TerminatorThread(v8::Isolate * isolate) : Thread("timeout-enforcer"), _isolate(isolate) {}
+    void Run() {
+      v8::V8::TerminateExecution(_isolate);
+    }
+  private:
+    v8::Isolate * _isolate;
+};
 
 VALUE Script::RunWithTimeout(VALUE self, VALUE timeout) {
-  pthread_t breaker_thread;
-  timeout_data data;
-  VALUE rval;
-  void *res;
+  TerminatorThread terminator(v8::Isolate::GetCurrent());
+  v8::Locker::StartPreemption(NUM2LONG(timeout));
+  terminator.Start();
 
-  data.isolate = v8::Isolate::GetCurrent();
-  data.timeout = NUM2LONG(timeout);
-
-  pthread_create(&breaker_thread, NULL, breaker, &data);
-
-  rval = Value(Script(self)->Run());
-
-  pthread_cancel(breaker_thread);
-  pthread_join(breaker_thread, &res);
-
+  VALUE rval = Value(Script(self)->Run());
+  v8::Locker::StopPreemption();
   return rval;
 }
 
