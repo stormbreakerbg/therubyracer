@@ -35,9 +35,9 @@ void External::release(v8::Persistent<v8::Value> handle, void* parameter) {
 }
 External::Data::Data(VALUE data) {
   this->value = data;
-  rb_gc_register_address(&value);
+  rr::GC::RetainRubyObject(data);
 }
 External::Data::~Data() {
-  rb_gc_unregister_address(&value);
+  rr::GC::ReleaseRubyObject(this->value);
 }
 }

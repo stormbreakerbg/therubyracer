@@ -4,6 +4,7 @@
 #include <v8.h>
 #include <ruby.h>
 #include <vector>
+#include <map>
 #ifdef HAVE_RUBY_ENCODING_H
 #include "ruby/encoding.h"
 #endif
@@ -76,6 +77,9 @@ public:
   static void Finalize(void* phantom);
   static void Drain(v8::GCType type, v8::GCCallbackFlags flags);
   static void Init();
+  static void MarkRetainedRubyObjects(std::map<VALUE,bool> *);
+  static void RetainRubyObject(VALUE object);
+  static void ReleaseRubyObject(VALUE object);
 };
 
 /**
